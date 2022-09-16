@@ -1,0 +1,9 @@
+tweepy
+kafka-python
+hazm
+elasticsearch
+cassandra-driver
+redis
+Flask
+flask_paginate
+clickhouse-driver

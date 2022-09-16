@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+
+<head> 
+    <title> Dashboard - Recent Tweets</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css">
+</head>
+
+<body style="padding: 25px;">
+    <div class="container">
+        <h1 dir="ltr">Recent Tweets</h1>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <tbody>
+                    {% for tweet in tweets_disp %}
+                    <tr>
+                        <td>{{ loop.index + (page - 1) * per_page }}</td>
+                        <td>{{ tweet }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ pagination.links }}
+    </div>
+</body>
+
+</html>

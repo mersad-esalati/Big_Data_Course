@@ -1,0 +1,163 @@
+version: "2"
+
+services:
+  # kafka cluster
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    volumes:
+      - "zookeeper_data:/zookeeper"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    volumes:
+      - "kafka_data:/kafka"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+
+  # elasticsearch cluster
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.12.1
+    container_name: es01
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - elastic
+  kib01:
+    image: docker.elastic.co/kibana/kibana:7.12.1
+    container_name: kib01
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_URL: http://es01:9200
+      ELASTICSEARCH_HOSTS: '["http://es01:9200"]'
+    networks:
+      - elastic
+
+  # cassandra
+  cassandra:
+    image: bitnami/cassandra:latest
+    container_name: cassandra
+    hostname: cassandra
+    ports:
+      - '7000:7000'
+      - '9042:9042'
+    volumes:
+      - 'cassandra_data:/cassandra'
+    environment:
+      - CASSANDRA_SEEDS=cassandra
+      - CASSANDRA_PASSWORD_SEEDER=yes
+      - CASSANDRA_PASSWORD=cassandra
+    networks:
+      - nf_explorer
+
+  # redis
+  redis:
+    image: bitnami/redis:latest
+    container_name: redis
+    hostname: redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - 'redis_data:/bitnami/redis/data'
+    networks:
+      - nf_explorer
+  
+  # flask_dashboard
+  flask_dashboard:
+    build: ./step4/flask
+    image: flask_dashboard:1.0.0
+    container_name: flask_dashboard
+    ports:
+      - '8585:8585'
+
+  # nf-data-explorer
+  nf_explorer:
+    build: ./nf-data-explorer
+    image: nfdataexplorer:1.0.0
+    container_name: nf_data_explorer
+    hostname: nf_data_explorer
+    depends_on:
+      - cassandra
+      - redis
+    ports:
+      - '80:80'
+    command: yarn start
+    networks:
+      - nf_explorer
+    environment:
+      - CASSANDRA_HOST=cassandra
+      - CASSANDRA_BASE_AUTH_PROVIDER_USERNAME=cassandra
+      - CASSANDRA_BASE_AUTH_PROVIDER_PASSWORD=cassandra
+      - REDIS_HOST=redis
+    volumes:
+      - ${PWD}/data:/apps/nf-data-explorer/data
+
+  # clickhouse
+  ch_server:
+    image: yandex/clickhouse-server
+    container_name: ch_server
+    ports:
+      - "9000:9000"
+      - "8123:8123"
+    volumes:
+      - ch_data:/var/lib/clickhouse
+    networks:
+        - ch_ntw
+
+volumes:
+  zookeeper_data:
+    driver: local
+  kafka_data:
+    driver: local
+  
+  es_data:
+    driver: local
+
+  cassandra_data:
+    driver: local
+
+  redis_data:
+    driver: local
+
+  ch_data:
+    driver: local
+
+  superset_data:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge
+
+  nf_explorer:
+
+  ch_ntw:
+    driver: bridge
